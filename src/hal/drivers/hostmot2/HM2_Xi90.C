@@ -135,20 +135,7 @@ static void util_unmapmemoryblock(void* block, size_t len)
 #define REGLEN 0x10000000
 
 static volatile uint32_t* registers = NULL;
-//--------------------------------------------------------------------------------------
-// 
-//--------------------------------------------------------------------------------------
-//static void gpmc_mapregisters()
-//{
-//	registers = (uint32_t*) util_mapmemoryblock(GPMC_BASE, REGLEN);
-//}
-//--------------------------------------------------------------------------------------
-// 
-//--------------------------------------------------------------------------------------
-//static void gpmc_unmapregisters()
-//{
-//	util_unmapmemoryblock((void*) registers, REGLEN);
-//}
+
 //--------------------------------------------------------------------------------------
 // 
 //--------------------------------------------------------------------------------------
@@ -192,28 +179,6 @@ void bus_init() {
 	gpmc_setup();
 	extbus = (uint16_t*) util_mapmemoryblock(0x01000000, 0x1FFFF);
 }
-//--------------------------------------------------------------------------------------
-// 
-//--------------------------------------------------------------------------------------
-//void bus_writebyte(uint16_t address, unsigned char data) 
-//{
-// *(extbus + (address<<1)) = data;
-//}
-//--------------------------------------------------------------------------------------
-// 
-//--------------------------------------------------------------------------------------
-//void bus_writeword(unsigned int address, unsigned int data) 
-//{
-// 0x1000 to 0x100A are the Pin outputs
-// 0x30  are the encoder registers
-// 0x4000 to 0x400E are the PWM registers
-
-// this is not used anymore
-// see hm2_Xi90_gpmc_write32
-
-//*(unsigned int *)(extbus + (address)) = data;
-
-//}
 //--------------------------------------------------------------------------------------
 // 
 //--------------------------------------------------------------------------------------
@@ -262,8 +227,6 @@ static inline u32 hm2_Xi90_gpmc_read32(hm2_Xi90_t *board, u16 addr)
     __u32 data;
     __u16 a, b;
 
-//    a=bus_readword(addr);
-//    b=bus_readword(addr+2);
     a=*(uint16_t  *)(extbus + (addr));
     b=*(uint16_t  *)(extbus + (addr+2));
     data = a + (b<<16);
@@ -272,27 +235,13 @@ static inline u32 hm2_Xi90_gpmc_read32(hm2_Xi90_t *board, u16 addr)
 //--------------------------------------------------------------------------------------
 //
 //--------------------------------------------------------------------------------------
-//static inline void hm2_Xi90_gpmc_write(unsigned int w, hm2_Xi90_t *board,u16 addr) 
-//{
-//    //bus_writeword(addr,w);
-//    *(unsigned int *)(extbus + (address)) = data;
-//}
-//--------------------------------------------------------------------------------------
-//
-//--------------------------------------------------------------------------------------
 static inline void hm2_Xi90_gpmc_write32(__u32 word, hm2_Xi90_t *board, u16 addr)
 { 
 static __u32 old_word;
- 
-//if (addr==0x4100 || addr==0x4200 || addr==0x4300 || addr==0x4400)
-//   {fprintf(stderr,"<%04X>[%04X][%04X]",addr,(unsigned int)word, (unsigned int)(word >> 16));
-//   }
 
 *(uint16_t *)(extbus + (addr)) =(uint16_t)word;           // first the lo word
 *(uint16_t *)(extbus + (addr+2)) = (uint16_t)(word >> 16);// hi word triggers write
 
-//   hm2_Xi90_gpmc_write((unsigned int)w, board, addr);           // write the low word
-//   hm2_Xi90_gpmc_write((unsigned int)(w >> 16) , board, addr+2);// write the high word
 }
 
 //
@@ -339,7 +288,6 @@ int count;
     }
 // there should be no bytes remaining
     for ( ; bytes_remaining > 0; bytes_remaining --, count++) {
-fprintf(stderr,"&");
         *((u8*)buffer) = hm2_Xi90_gpmc_read(board,addr+count);
         buffer ++;
     }
@@ -366,78 +314,9 @@ int count;
 
     for ( ; bytes_remaining > 0; bytes_remaining --,count++) 
         {
-fprintf(stderr,"#");
-//         hm2_Xi90_gpmc_write(*((u8*)buffer), board,addr+count);
-//         buffer ++;
-// this should not happen
         }
     return 1;
 }
-
-
-
-//--------------------------------------------------------------------------------------
-//
-//--------------------------------------------------------------------------------------
-//int hm2_Xi90_program_fpga(hm2_lowlevel_io_t *this, const bitfile_t *bitfile) {
-////    int orig_debug_epp = debug_epp;  // we turn off EPP debugging for this part...
-//    hm2_Xi90_t *board = this->private;
-//    int64_t start_time, end_time;
-//    int i;
-//    const u8 *firmware = bitfile->e.data;
-//
-//fprintf(stderr,"Skipping FPGA programming......\n");
-    //
-    // send the firmware
-    //
-//JP
-// rewrite for BBB FPGA programming
-/*
-    debug_epp = 0;
-    start_time = rtapi_get_time();
-
-    // select the CPLD's data address
-    hm2_Xi90_gpmc_addr8(0, board);
-
-    for (i = 0; i < bitfile->e.size; i ++, firmware ++) {
-        hm2_Xi90_gpmc_write(bitfile_reverse_bits(*firmware), board);
-    }
-
-    end_time = rtapi_get_time();
-    debug_epp = orig_debug_epp;
-
-
-    // see if it worked
-    if (hm2_Xi90_gpmc_check_for_timeout(board)) {
-        THIS_PRINT("EPP Timeout while sending firmware!\n");
-        return -EIO;
-    }
-
-
-    //
-    // brag about how fast it was
-    //
-
-    {
-        __u32 duration_ns;
-
-        duration_ns = (__u32)(end_time - start_time);
-
-        if (duration_ns != 0) {
-            THIS_INFO(
-                "%d bytes of firmware sent (%u KB/s)\n",
-                bitfile->e.size,
-                (__u32)(((double)bitfile->e.size / ((double)duration_ns / (double)(1000 * 1000 * 1000))) / 1024)
-            );
-        }
-    }
-*/
-
-//    return 0;
-//}
-
-
-
 //--------------------------------------------------------------------------------------
 //
 //--------------------------------------------------------------------------------------
@@ -453,32 +332,6 @@ int hm2_Xi90_reset(hm2_lowlevel_io_t *this) {
     //
 // Need to modfy for BBB version
 fprintf(stderr,"SKIPPING RESET FPGA in hm2_Xi90_reset\n");
-/*
-
-
-    // 
-    // this code resets the FPGA *only* if the CPLD is in charge of the
-    // parallel port
-    //
-
-    // select the control register
-    hm2_Xi90_gpmc_addr8(1, board);
-
-    // bring the Spartan3's PROG_B line low for 1 us (the specs require 300-500 ns or longer)
-    hm2_Xi90_gpmc_write(0x00, board);
-    hm2_Xi90_nanosleep(1000);
-
-    // bring the Spartan3's PROG_B line high and wait for 2 ms before sending firmware (required by spec)
-    hm2_Xi90_gpmc_write(0x01, board);
-    hm2_Xi90_nanosleep(2 * 1000 * 1000);
-
-    // make sure the FPGA is not asserting its /DONE bit
-    byte = hm2_Xi90_gpmc_read(board);
-    if ((byte & 0x01) != 0) {
-        fprintf(stderr,"/DONE is not low after CPLD reset!\n");
-        return -EIO;
-    }
-*/
     return 0;
 }
 
@@ -500,7 +353,6 @@ static void hm2_Xi90_cleanup(void) {
         hm2_lowlevel_io_t *this = &board[i].llio;
         THIS_PRINT("releasing board\n");
         hm2_unregister(this);
-      //J@X  hal_parport_release(&board[i].port);
     }
 }
 
@@ -509,8 +361,6 @@ static void hm2_Xi90_cleanup(void) {
 //--------------------------------------------------------------------------------------
 static int hm2_Xi90_setup(void) {
     int i;
-
-//    fprintf(stderr,"loading HostMot2 Xi90 driver version %s\n", HM2_XI90_VERSION);
 
     // zero the board structs
     memset(board, 0, HM2_XI90_MAX_BOARDS * sizeof(hm2_Xi90_t));
@@ -541,44 +391,15 @@ static int hm2_Xi90_setup(void) {
         this = &board[i].llio;
 
 
-        //
-        // now we want to detect if this Xi90 has the big FPGA or the small one
-        // 3s200tq144 for the small board
-        // 3s400tq144 for the big
-        //
-
-        // make sure the CPLD is in charge of the parallel port
-//JP        hm2_Xi90_reset(&board[i].llio);
-
-        //  select CPLD data register
-//JP        hm2_Xi90_gpmc_addr8(0, &board[i]);
-
-//JP        if (hm2_Xi90_gpmc_read(&board[i]) & 0x01) {
+ 
             board[i].llio.fpga_part_number = "6slx9tqg144";
-//JP        } else {
-//JP            board[i].llio.fpga_part_number = "3s200tq144";
-//JP        }
+
         THIS_DBG("detected FPGA '%s'\n", board[i].llio.fpga_part_number);
 
         r = hm2_register(&board[i].llio, config[i]);
         if (r != 0) {
-//            THIS_ERR(
-//                "board at (ioaddr=0x%04X, ioaddr_hi=0x%04X, epp_wide %s) not found!\n",
-//                board[i].port.base,
-//                board[i].port.base_hi,
-//                (board[i].epp_wide ? "ON" : "OFF")
-//            );
-
-          //JP  hal_parport_release(&board[i].port);
             return r;
         }
-
-//        THIS_PRINT(
-//            "board at (ioaddr=0x%04X, ioaddr_hi=0x%04X, epp_wide %s) found\n",
-//            board[i].port.base,
-//            board[i].port.base_hi,
-//            (board[i].epp_wide ? "ON" : "OFF")
-//        );
 
         num_boards ++;
     }
